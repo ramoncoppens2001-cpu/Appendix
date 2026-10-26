@@ -123,6 +123,18 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .page .bg{object-fit:cover;z-index:0;pointer-events:none;-webkit-user-drag:none}
 .page .rc{z-index:1}
 .page .lg{z-index:3;pointer-events:none}
+.page .gr{z-index:3;pointer-events:none}
+.page .gr i{position:absolute;display:block}
+.page .drag{pointer-events:auto;cursor:grab;touch-action:none;border-radius:1px}
+.page .drag:hover{outline:1.5px dashed rgba(37,39,58,.55);outline-offset:4px}
+.page .drag.dragging{cursor:grabbing;outline:1.5px solid #FFDF00;outline-offset:4px}
+.page.mini .drag,.st .drag{pointer-events:none;outline:none}
+.posgrid{display:grid;grid-template-columns:repeat(3,22px);grid-template-rows:repeat(3,22px);gap:3px;padding:4px;border-radius:8px;background:var(--control)}
+.posgrid button{border:0;border-radius:4px;background:var(--field);box-shadow:inset 0 0 0 1px var(--sep);padding:0}
+.posgrid button:hover{box-shadow:inset 0 0 0 1px var(--accent)}
+.posgrid button[aria-pressed="true"]{background:var(--accent)}
+.posrow{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.posrow .side{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--secondary);line-height:1.35}
 .page .lg svg{display:block;width:100%;height:100%}
 .page .tx{z-index:3;white-space:pre;margin:0;pointer-events:none}
 .page .fld{z-index:3;border:0;margin:0;padding:0;background:transparent;resize:none;overflow:hidden;white-space:pre-wrap;
@@ -531,6 +543,7 @@ function coverItems(part, num) {
   const F = (field, o) => fitBlock(Object.assign({ key: c.id + ':' + field, field, part }, o, field === 'title' ? { f: HF, wt: W(o.wt) } : {}));
   const NUM = o => txt(Object.assign({}, o, { f: HF, wt: W(o.wt) }));
   const it = [];
+  let LG = null, GR = null, dark = false; // default logo and square grid of the style
   const head = [c.label, c.num].filter(Boolean).join(' ');
   const s = part.style;
 
@@ -543,12 +556,12 @@ function coverItems(part, num) {
     it.push(t); y += t.lines.length * lhmm(t.pt, 1.2);
     if (c.sub) { y += 2.5; const sb = F('sub', { x: 16, y, w: 178, max: 12, min: 10, maxLines: 3, wt: 400, color: C.n70, lh: 1.35, value: c.sub }); it.push(sb); y += sb.lines.length * lhmm(sb.pt, 1.35); }
     it.push(rect(x, y + 11, w, 4.2, c.color));
-    if (c.logo) it.push(logo(PW - 14 - 20, 14, 20));
+    LG = { x: PW - 14 - 20, y: 14, s: 20 };
     if (c.rows.length) it.push(...metaCols(c.rows, 16, PH - 30, 60, C.n70, C.navy));
   }
 
   else if (s === 'bijlage') {
-    if (c.logo) it.push(logo(PW - 18 - 22, 18, 22));
+    LG = { x: PW - 18 - 22, y: 18, s: 22 };
     const lx = 18, cx = 54, cw = 138, y0 = 82;
     if (c.label) it.push(txt({ x: lx, y: y0 - 6.5, w: 30, pt: 9.5, wt: 500, color: C.n70, align: 'right', lines: [c.label] }));
     const t = F('title', { x: cx, y: y0, w: cw, max: 34, min: 22, maxLines: 4, wt: 300, lh: 1.08, value: c.title, ph: 'Titel' });
@@ -571,7 +584,7 @@ function coverItems(part, num) {
   }
 
   else if (s === 'kantlijn') {
-    if (c.logo) it.push(logo(PW - 18 - 22, 18, 22));
+    LG = { x: PW - 18 - 22, y: 18, s: 22 };
     const x = 30;
     if (c.label) it.push(txt({ x, y: 58, w: 160, pt: 9, wt: 600, track: .16, color: C.n70, lines: [c.label.toUpperCase()] }));
     let y = 64;
@@ -588,9 +601,9 @@ function coverItems(part, num) {
   }
 
   else if (s === 'navy' || s === 'navyflat') {
-    const dark = true;
+    dark = true;
     it.push(s === 'navy' ? cubes() : rect(0, 0, PW, PH, C.navy));
-    if (c.logo) it.push(logo(PW - 25, 0, 25));
+    LG = { x: PW - 25, y: 0, s: 25 };
     let y = 112;
     if (head) {
       const lab = head.toUpperCase(), cw = tw(lab, BF, 500, 8.5, .14) + 4.4;
@@ -601,8 +614,7 @@ function coverItems(part, num) {
     const t = F('title', { x: 18, y, w: 152, max: 38, min: 24, maxLines: 4, wt: 300, lh: 1.07, color: dark ? C.wit : C.navy, value: c.title, ph: 'Titel' });
     it.push(t); y += t.lines.length * lhmm(t.pt, 1.07) + 5;
     if (c.sub) it.push(F('sub', { x: 18, y, w: 140, max: 13, min: 10, maxLines: 4, wt: 400, lh: 1.4, color: dark ? C.navy5 : C.navy, value: c.sub }));
-    const sq = dark ? C.geel : C.wit;
-    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) it.push(rect(162 + i * 8, 248 + j * 8, 1.76, 1.76, sq));
+    GR = { x: 162, y: 248, pitch: 8, sq: 1.76, color: 'geel' };
     if (c.rows.length) it.push(...metaCols(c.rows, 18, 262, 56, dark ? C.navy4 : 'rgba(37,39,58,.7)', dark ? C.wit : C.navy));
   }
 
@@ -611,7 +623,7 @@ function coverItems(part, num) {
     const band = 10, onDark = ['navy', 'diep', 'rood', 'teal', 'groen', 'blauw', 'paars', 'roze', 'oranje', 'staal'].includes(part.color);
     it.push(rect(0, 0, band, PH, c.color));
     if (head) it.push(txt({ cx: band / 2, cy: PH / 2, rot: 90, pt: 7.5, wt: 500, track: .22, color: onDark ? C.wit : C.navy, lines: [head.toUpperCase()] }));
-    if (c.logo) it.push(logo(PW - 18 - 22, 18, 22));
+    LG = { x: PW - 18 - 22, y: 18, s: 22 };
     let y = 112;
     if (head) { it.push(txt({ x: 30, y, w: 150, pt: 8.5, wt: 500, track: .14, color: C.n70, lines: [head.toUpperCase()] })); y += 7; }
     const t = F('title', { x: 30, y, w: 160, max: 40, min: 24, maxLines: 4, wt: 300, lh: 1.07, value: c.title, ph: 'Titel' });
@@ -623,15 +635,15 @@ function coverItems(part, num) {
   else if (s === 'raster') {
     // like 'Our reference': logo with the 4 × 4 square grid beside it, a highlighted sub heading and a light headline
     const L = 22, lx = PW - 18 - L, ly = 18;
-    if (c.logo) it.push(logo(lx, ly, L));
-    const pitch = L / 2, sq = 2.4, gx = lx - 12 - 3 * pitch - sq;
-    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) it.push(rect(gx + i * pitch, ly + j * pitch, sq, sq, C.geel));
+    LG = { x: lx, y: ly, s: L };
+    const pitch = L / 2, sq = 2.4;
+    GR = { x: lx - 12 - 3 * pitch - sq, y: ly, pitch, sq, color: 'geel' };
     let y = 108;
     if (head) {
       const lab = head.toUpperCase(), cw = tw(lab, BF, 500, 8, .14) + 4;
-      const dark = !['geel', 'staal'].includes(part.color);
+      const chipDark = !['geel', 'staal'].includes(part.color);
       it.push(rect(18, y, cw, 4.9, c.color));
-      it.push(txt({ x: 20, y: y + (4.9 - lhmm(8, 1.2)) / 2 + .12, w: cw, pt: 8, wt: 500, track: .14, color: dark ? C.wit : C.navy, lines: [lab] }));
+      it.push(txt({ x: 20, y: y + (4.9 - lhmm(8, 1.2)) / 2 + .12, w: cw, pt: 8, wt: 500, track: .14, color: chipDark ? C.wit : C.navy, lines: [lab] }));
       y += 9.5;
     }
     const t = F('title', { x: 18, y, w: 165, max: 44, min: 26, maxLines: 4, wt: 300, lh: 1.05, value: c.title, ph: 'Titel' });
@@ -642,7 +654,7 @@ function coverItems(part, num) {
 
   else if (s === 'markering') {
     // headline with one key word highlighted (type highlight, p. 58)
-    if (c.logo) it.push(logo(PW - 18 - 22, 18, 22));
+    LG = { x: PW - 18 - 22, y: 18, s: 22 };
     let y = 108;
     if (head) { it.push(txt({ x: 18, y, w: 160, pt: 8.5, wt: 500, track: .14, color: C.n70, lines: [head.toUpperCase()] })); y += 7.5; }
     const t = F('title', { x: 18, y, w: 168, max: 42, min: 26, maxLines: 4, wt: 300, lh: 1.12, value: c.title, ph: 'Titel' });
@@ -658,8 +670,8 @@ function coverItems(part, num) {
       const wx = 18 + (before ? tw(before + ' ', t.f, t.wt, t.pt) : 0), ww = tw(word, t.f, t.wt, t.pt);
       const pad = mm * .1;
       it.push(Object.assign(rect(wx - pad, base - mm * .8, ww + 2 * pad, mm * 1.02, c.color), { z: 2 }));
-      const dark = !['geel', 'staal'].includes(part.color);
-      if (dark) it.push(Object.assign(txt({ x: wx, y: y + li * Lh, w: ww + 2, pt: t.pt, f: t.f, wt: t.wt, lh: t.lh, color: C.wit, lines: [word] }), { z: 4 }));
+      const hlDark = !['geel', 'staal'].includes(part.color);
+      if (hlDark) it.push(Object.assign(txt({ x: wx, y: y + li * Lh, w: ww + 2, pt: t.pt, f: t.f, wt: t.wt, lh: t.lh, color: C.wit, lines: [word] }), { z: 4 }));
     }
     it.push(t); y += t.lines.length * lhmm(t.pt, 1.12) + 6;
     if (c.sub) it.push(F('sub', { x: 18, y, w: 150, max: 13, min: 10, maxLines: 4, wt: 400, color: C.n70, lh: 1.4, value: c.sub }));
@@ -668,7 +680,7 @@ function coverItems(part, num) {
 
   else if (s === 'research') {
     it.push(rect(140, 0, 70, PH, C.creme));
-    if (c.logo) it.push(logo(PW - 18 - 22, 18, 22));
+    LG = { x: PW - 18 - 22, y: 18, s: 22 };
     const acc = c.color;
     let y = 74;
     if (c.label) { it.push(txt({ x: 18, y, w: 110, pt: 8.5, wt: 600, track: .14, color: acc, lines: [c.label.toUpperCase()] })); }
@@ -687,7 +699,24 @@ function coverItems(part, num) {
     });
     it.push(rect(18, 274, 16, 1.4, acc), rect(36, 274, 18, 1.4, C.n20));
   }
+  if (c.logo && LG) {
+    const pos = part.logoPos || LG;
+    it.push(Object.assign(logo(pos.x, pos.y, LG.s), { drag: 'logo', part }));
+  }
+  const gOn = part.gridOn == null ? !!GR : part.gridOn;
+  if (gOn) {
+    const g = GR || { pitch: 8, sq: 1.76, color: 'geel' }, gw = 3 * g.pitch + g.sq;
+    const def = GR ? { x: GR.x, y: GR.y } : { x: PW - 18 - gw, y: PH - 18 - gw };
+    const pos = part.gridPos || def;
+    it.push({ t: 'grid', x: pos.x, y: pos.y, w: gw, h: gw, pitch: g.pitch, sq: g.sq, fill: GRID_COL[part.gridColor || g.color], z: 3, drag: 'grid', part });
+  }
   return it;
+}
+const GRID_COL = { geel: '#FFDF00', navy: '#25273A', wit: '#FFFFFF' };
+// size of the logo / grid on a cover, for the position presets
+function dragSize(part, what) {
+  const it = coverItems(Object.assign({}, part, { logo: true, gridOn: true }), part._num || '').find(i => i.drag === what);
+  return it ? { w: it.w, h: it.h, x: it.x, y: it.y } : null;
 }
 
 /* ---------- fotobladen ---------- */
@@ -837,6 +866,39 @@ function fieldNode(it) {
   ta.style.width = pc(it.w + 1.5, PW);
   return ta;
 }
+/* drag the logo or the square grid on a cover; snaps to the margins and the centre lines */
+function makeDrag(n, it) {
+  n.classList.add('drag');
+  n.title = it.drag === 'logo' ? 'Sleep om het logo te verplaatsen' : 'Sleep om het raster te verplaatsen';
+  n.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const page = n.parentNode, r = page.getBoundingClientRect(), k = PW / r.width;
+    const start = { x: e.clientX, y: e.clientY, ox: it.x, oy: it.y };
+    let pos = { x: it.x, y: it.y }, moved = false;
+    n.setPointerCapture(e.pointerId); n.classList.add('dragging');
+    const snap = (v, size, total) => {
+      const targets = [0, 18, (total - size) / 2, total - 18 - size, total - size];
+      for (const t of targets) if (Math.abs(v - t) < 2.2) return t;
+      return Math.round(v * 2) / 2;
+    };
+    const move = ev => {
+      const dx = (ev.clientX - start.x) * k, dy = (ev.clientY - start.y) * k;
+      if (Math.abs(dx) + Math.abs(dy) > .5) moved = true;
+      pos = { x: snap(Math.min(Math.max(start.ox + dx, 0), PW - it.w), it.w, PW), y: snap(Math.min(Math.max(start.oy + dy, 0), PH - it.h), it.h, PH) };
+      n.style.left = pc(pos.x, PW); n.style.top = pc(pos.y, PH);
+    };
+    const up = () => {
+      n.removeEventListener('pointermove', move); n.removeEventListener('pointerup', up); n.removeEventListener('pointercancel', up);
+      n.classList.remove('dragging');
+      if (!moved) return;
+      it.part[it.drag === 'logo' ? 'logoPos' : 'gridPos'] = pos;
+      S.rev++; render(); if (S.sel === it.part.id) renderInspector();
+    };
+    n.addEventListener('pointermove', move); n.addEventListener('pointerup', up); n.addEventListener('pointercancel', up);
+    if (S.sel !== it.part.id) select(it.part.id, false);
+  });
+}
 function logoNode() { const d = el('div', 'lg'); d.innerHTML = LOGO_SVG; return d; }
 
 // draw items into a page; interactive=false for thumbnails
@@ -849,7 +911,13 @@ function drawPage(page, items, interactive) {
   for (const it of items) {
     if (it.t === 'rect') { const n = el('div', 'rc'); box(n, it); n.style.background = it.fill; add(n); }
     else if (it.t === 'cubes') { const n = el('div', 'cubes'); box(n, it); n.innerHTML = `<svg viewBox="0 0 ${PW} ${PH}" preserveAspectRatio="none">${it.polys.map(p => `<polygon fill="${p.fill}" stroke="${p.fill}" stroke-width=".35" stroke-linejoin="round" points="${p.pts.map(q => q[0].toFixed(2) + ',' + q[1].toFixed(2)).join(' ')}"/>`).join('')}</svg>`; add(n); }
-    else if (it.t === 'logo') { const n = logoNode(); box(n, it); add(n); }
+    else if (it.t === 'logo') { const n = logoNode(); box(n, it); if (interactive && it.drag) makeDrag(n, it); add(n); }
+    else if (it.t === 'grid') {
+      const n = el('div', 'gr'); box(n, it);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const q = el('i'); q.style.left = (i * it.pitch / it.w * 100) + '%'; q.style.top = (j * it.pitch / it.h * 100) + '%'; q.style.width = q.style.height = (it.sq / it.w * 100) + '%'; q.style.background = it.fill; n.append(q); }
+      if (interactive && it.drag) makeDrag(n, it);
+      add(n);
+    }
     else if (it.t === 'text') {
       if (it.field && interactive) { const ta = fieldNode(it); ta._persist = true; keep.add(ta); if (ta.parentNode !== page) page.append(ta); continue; }
       const n = el('div', 'tx');
@@ -1238,7 +1306,13 @@ function renderInspector() {
       <div class="hint">${esc((FONT_THEMES.find(f => f.w === DOC.font) || FONT_THEMES[0]).d)}</div>
       <div class="row"><div class="lbl">Titel</div>${seg('cvWeight', [['light', 'Licht'], ['regular', 'Normaal'], ['medium', 'Medium'], ['bold', 'Vet']], part.weight || (part.style === 'balken' ? 'bold' : 'light'))}</div>
       ${part.style === 'markering' ? `<div class="row"><div class="lbl">Gemarkeerd woord</div>${seg('cvMark', [['first', 'Eerste'], ['last', 'Laatste'], ['none', 'Geen']], part.mark || 'last')}</div><div class="hint">Volgens de guidelines markeer je één kernwoord, meestal een zelfstandig naamwoord.</div>` : ''}
+    </div>
+    <div class="sec"><h3>Logo en raster</h3>
       ${sw('cvLogo', 'Savills-logo', part.logo)}
+      ${part.logo ? posCtl('logo', part) : ''}
+      ${sw('cvGrid', 'Vierkantjesraster (4 × 4)', part.gridOn == null ? STYLE_HAS_GRID.includes(part.style) : part.gridOn)}
+      ${(part.gridOn == null ? STYLE_HAS_GRID.includes(part.style) : part.gridOn) ? `<div class="row"><div class="lbl">Kleur van het raster</div>${seg('cvGridCol', [['geel', 'Geel'], ['navy', 'Navy'], ['wit', 'Wit']], part.gridColor || 'geel')}</div>${posCtl('grid', part)}` : ''}
+      <div class="hint">Je kunt het logo en het raster ook op het blad slepen. Ze klikken vast op de marges en het midden.</div>
     </div>
     <div class="sec"><h3>Gegevens onderaan</h3>
       ${part.rows.map((r, i) => `<div class="metarow${r.on ? '' : ' off'}" id="mr${i}">
@@ -1289,11 +1363,25 @@ function docHtml() {
     <div class="hint">${esc((QUALITY[DOC.quality] || QUALITY.orig).d)}</div>
   </div>`;
 }
+const STYLE_HAS_GRID = ['navy', 'navyflat', 'raster'];
+function posCtl(what, part) {
+  const sz = dragSize(part, what), m = 18;
+  const cur = sz ? { x: sz.x, y: sz.y } : null;
+  const btns = [];
+  for (let cy = 0; cy < 3; cy++) for (let cx = 0; cx < 3; cx++) {
+    const on = cur && sz && Math.abs(cur.x - [m, (PW - sz.w) / 2, PW - m - sz.w][cx]) < .6 && Math.abs(cur.y - [m, (PH - sz.h) / 2, PH - m - sz.h][cy]) < .6;
+    const names = [['Linksboven', 'Boven midden', 'Rechtsboven'], ['Links midden', 'Midden', 'Rechts midden'], ['Linksonder', 'Onder midden', 'Rechtsonder']];
+    btns.push(`<button type="button" data-pos="${cx},${cy}" title="${names[cy][cx]}" aria-label="${names[cy][cx]}" aria-pressed="${!!on}"></button>`);
+  }
+  const custom = part[what === 'logo' ? 'logoPos' : 'gridPos'];
+  return `<div class="posrow"><div class="posgrid" id="pos-${what}">${btns.join('')}</div>
+    <div class="side"><span>Plek van ${what === 'logo' ? 'het logo' : 'het raster'}</span>${custom ? `<button type="button" class="mini-btn" id="posdef-${what}">Terug naar standaard</button>` : '<span style="color:var(--tertiary)">Standaard voor deze stijl</span>'}</div></div>`;
+}
 function onSeg(id, fn) { const s = $(id); if (s) s.addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) fn(b.dataset.v); }); }
 function onSw(id, fn) { const s = $(id); if (s) s.addEventListener('change', () => fn(s.checked)); }
 function wireCover(part) {
   const changed = (rebuild) => { S.rev++; render(); if (rebuild) renderInspector(); };
-  onSeg('cvStyles', v => { part.style = v; part.weight = ''; const st = STYLES.find(s => s.w === v); if (st.kleur) part.color = st.kleur; DOC.lastStyle = v; saveDoc(); changed(true); });
+  onSeg('cvStyles', v => { part.style = v; part.weight = ''; part.logoPos = null; part.gridPos = null; part.gridOn = null; const st = STYLES.find(s => s.w === v); if (st.kleur) part.color = st.kleur; DOC.lastStyle = v; saveDoc(); changed(true); });
   $('cvLabel').addEventListener('input', () => { part.label = $('cvLabel').value; DOC.lastLabel = part.label; saveDoc(); document.querySelectorAll('#cvLabelChips .chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === part.label))); changed(false); });
   onSeg('cvLabelChips', v => { part.label = v; DOC.lastLabel = v; saveDoc(); changed(true); });
   onSeg('cvNumMode', v => { if (v === 'manual' && !part.num) part.num = part._num || ''; part.numMode = v; changed(true); });
@@ -1302,7 +1390,21 @@ function wireCover(part) {
   $('cvTitle').addEventListener('input', () => { part.title = $('cvTitle').value; changed(false); });
   $('cvSub').addEventListener('input', () => { part.sub = $('cvSub').value; changed(false); });
   onSeg('cvColor', v => { part.color = v; changed(true); });
-  onSw('cvLogo', v => { part.logo = v; DOC.lastLogo = v; saveDoc(); changed(false); });
+  onSw('cvLogo', v => { part.logo = v; DOC.lastLogo = v; saveDoc(); changed(true); });
+  onSw('cvGrid', v => { part.gridOn = v; changed(true); });
+  onSeg('cvGridCol', v => { part.gridColor = v; changed(true); });
+  ['logo', 'grid'].forEach(what => {
+    const g = $('pos-' + what); if (!g) return;
+    g.addEventListener('click', e => {
+      const b = e.target.closest('button[data-pos]'); if (!b) return;
+      const sz = dragSize(part, what); if (!sz) return;
+      const [cx, cy] = b.dataset.pos.split(',').map(Number), m = 18;
+      const x = [m, (PW - sz.w) / 2, PW - m - sz.w][cx], y = [m, (PH - sz.h) / 2, PH - m - sz.h][cy];
+      part[what === 'logo' ? 'logoPos' : 'gridPos'] = { x, y };
+      changed(true);
+    });
+    const d = $('posdef-' + what); if (d) d.addEventListener('click', () => { part[what === 'logo' ? 'logoPos' : 'gridPos'] = null; changed(true); });
+  });
   part.rows.forEach((r, i) => {
     const keep = () => { DOC.lastRows = part.rows.map(x => Object.assign({}, x)); saveDoc(); };
     onSw('mr' + i + 'on', v => { r.on = v; $('mr' + i).classList.toggle('off', !v); keep(); changed(false); });
@@ -1498,6 +1600,7 @@ async function buildPdf(pages, title) {
         doc.lines(d, p.pts[0][0], p.pts[0][1], [1, 1], 'FD', true);
       }
       else if (it.t === 'logo') doc.addImage(ASSET.logo, 'PNG', it.x, it.y, it.w, it.h, 'savills-logo', 'FAST');
+      else if (it.t === 'grid') { doc.setFillColor(it.fill); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) doc.rect(it.x + i * it.pitch, it.y + j * it.pitch, it.sq, it.sq, 'F'); }
       else if (it.t === 'text') { if (!it.empty) pdfText(doc, it); }
       else if (it.t === 'photo') {
         await tick();
