@@ -309,8 +309,8 @@ kbd{font:inherit;font-size:11px;padding:1px 5px;border-radius:4px;background:var
       <div class="empty" id="empty">
         <div class="empty-inner">
           <div class="empty-art" id="emptyArt" aria-hidden="true"></div>
-          <h1 id="emptyH">Zet je foto's op een A4</h1>
-          <p id="emptyP">Kies 2, 6 of 10 foto's. Ze komen vanzelf netjes op een staand A4 met ruimte voor een bijschrift. Bewaar alles als één PDF.</p>
+          <h1 id="emptyH">Sleep je foto's hierheen</h1>
+          <p id="emptyP">Sleep je foto's hierheen of kies ze. Ze komen vanzelf netjes op een staand A4. Typ bovenin een bestandsnaam en klik op Bewaar PDF.</p>
           <div class="acts">
             <button class="pill navy" id="emptyGo">Kies foto's…</button>
           </div>
@@ -343,7 +343,7 @@ kbd{font:inherit;font-size:11px;padding:1px 5px;border-radius:4px;background:var
 
 <div class="pop" id="resetPop" hidden role="dialog" aria-label="Opnieuw beginnen">
   <h2>Opnieuw beginnen?</h2>
-  <p>Alle voorbladen en foto’s gaan weg, en ook alles wat de app onthoudt: project, labels, gegevens onderaan, bestandsnamen en instellingen. Je begint met één leeg voorblad.</p>
+  <p>Alle voorbladen en foto’s gaan weg, en ook alles wat de app onthoudt: project, labels, gegevens onderaan, bestandsnamen en instellingen. Je begint weer leeg.</p>
   <div class="pop-acts"><button type="button" class="btn2" id="resetCancel">Annuleer</button><button type="button" class="pill danger" id="resetGo">Wis alles</button></div>
 </div>
 
@@ -401,11 +401,11 @@ const letter = n => { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = St
 const fmtNum = (n, f) => f === 'arabic' ? String(n) : f === 'letter' ? letter(n) : roman(n);
 
 /* ---------- state ---------- */
-const DOC_DEFAULTS = { project: '', date: '', lang: 'en', font: 'gotham', showDate: true, logoPhotos: false, pageNums: true, lastStyle: 'balken', lastLabel: 'Appendix', lastFmt: 'roman', lastLogo: true, lastRows: null, photosFile: '', coversFile: '', scope: 'one' };
-const DOC = Object.assign({ font: 'gotham', project: '', date: '', lang: 'en', showDate: true, logoPhotos: false, pageNums: true, lastStyle: 'balken', lastLabel: 'Appendix', lastFmt: 'roman', lastLogo: true, lastRows: null, photosFile: '', coversFile: '', scope: 'one' },
-  store.get('a4fotoblad.doc', {}));
-const S = { mode: 'cover', parts: [], sel: null, uid: 0, rev: 0, savedRev: 0, undo: null, selPhoto: null, saving: false, tab: 'blad', nav: innerWidth > 900, insp: innerWidth > 900 };
-const saveDoc = () => store.set('a4fotoblad.doc', DOC);
+const DOC_DEFAULTS = { project: '', date: '', lang: 'en', font: 'gotham', showDate: false, logoPhotos: false, pageNums: false, quality: 'orig', lastStyle: 'balken', lastLabel: 'Appendix', lastFmt: 'roman', lastLogo: true, lastRows: null, photosFile: '', coversFile: '', scope: 'one' };
+const DOC = Object.assign({ quality: 'orig', font: 'gotham', project: '', date: '', lang: 'en', showDate: false, logoPhotos: false, pageNums: false, lastStyle: 'balken', lastLabel: 'Appendix', lastFmt: 'roman', lastLogo: true, lastRows: null, photosFile: '', coversFile: '', scope: 'one' },
+  store.get('a4fotoblad.doc2', {}));
+const S = { mode: 'photos', parts: [], sel: null, uid: 0, rev: 0, savedRev: 0, undo: null, selPhoto: null, saving: false, tab: 'blad', nav: false, insp: false };
+const saveDoc = () => store.set('a4fotoblad.doc2', DOC);
 const partById = id => S.parts.find(p => p.id === id);
 const selPart = () => partById(S.sel);
 const T = (nl, en) => DOC.lang === 'nl' ? nl : en;
@@ -422,7 +422,7 @@ function newCover() {
   return { id: 'p' + (++S.uid), kind: 'cover', style: st.w, label: DOC.lastLabel, numMode: 'auto', fmt: DOC.lastFmt, num: '', title: '', sub: '', color: st.kleur || 'navy', logo: DOC.lastLogo, rows, fileName: '', weight: '', mark: 'last' };
 }
 function newPhotos() {
-  return { id: 'p' + (++S.uid), kind: 'photos', title: '', run: '', header: true, cols: 0, per: 0, caps: true, number: true, crop: false, photos: [] };
+  return { id: 'p' + (++S.uid), kind: 'photos', title: '', run: '', header: false, cols: 0, per: 0, caps: true, number: false, crop: false, photos: [] };
 }
 const modeParts = () => S.parts.filter(p => p.kind === (S.mode === 'cover' ? 'cover' : 'photos'));
 const todayText = () => new Date().toLocaleDateString(DOC.lang === 'nl' ? 'nl-NL' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -1137,6 +1137,8 @@ async function addFiles(list, target) {
   let bad = 0, k = 0, ok = 0;
   for (const file of files) {
     const p = { id: ++S.uid, file, src: URL.createObjectURL(file), rot: 0, caption: '', w: 4, h: 3 };
+    p.isJpeg = /^image\/jpe?g$/i.test(file.type) || /\.jpe?g$/i.test(file.name);
+    p.orient = p.isJpeg ? await readOrientation(file) : 0;
     buildPhoto(p);
     try { await processPhoto(p); part.photos.push(p); ok++; }
     catch (e) { bad++; console.warn(file.name, e); URL.revokeObjectURL(p.src); }
@@ -1283,6 +1285,8 @@ function docHtml() {
     ${sw('docShowDate', 'Datum rechtsboven', DOC.showDate)}
     ${sw('docLogo', 'Klein Savills-logo', DOC.logoPhotos)}
     ${sw('docPages', 'Voetregel met paginanummer', DOC.pageNums)}
+    <div class="row" style="margin-top:6px"><div class="lbl">Fotokwaliteit in de PDF</div>${seg('docQuality', Object.entries(QUALITY).map(([k, v]) => [k, v.l]), DOC.quality || 'orig')}</div>
+    <div class="hint">${esc((QUALITY[DOC.quality] || QUALITY.orig).d)}</div>
   </div>`;
 }
 function onSeg(id, fn) { const s = $(id); if (s) s.addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) fn(b.dataset.v); }); }
@@ -1339,6 +1343,7 @@ function wireDoc() {
   onSw('docShowDate', v => { DOC.showDate = v; changed(); });
   onSw('docLogo', v => { DOC.logoPhotos = v; changed(); });
   onSw('docPages', v => { DOC.pageNums = v; changed(); });
+  onSeg('docQuality', v => { DOC.quality = v; saveDoc(); renderInspector(); });
 }
 // typing on the page keeps the inspector field in step
 function syncInspector(ta) {
@@ -1372,6 +1377,62 @@ async function prepareAssets() {
     g.scale(600 / 500, 600 / 500); g.fillStyle = LOGO_ROOD; g.fill(new Path2D(LOGO_D));
     ASSET.logo = c.toDataURL('image/png');
   }
+}
+/* EXIF orientation of a JPEG (1 = upright, 0 = unknown). PDF viewers ignore EXIF,
+   so only upright JPEGs can go into the PDF byte for byte. */
+async function readOrientation(file) {
+  try {
+    const v = new DataView(await file.slice(0, 262144).arrayBuffer());
+    if (v.getUint16(0) !== 0xFFD8) return 0;
+    let o = 2;
+    while (o + 4 < v.byteLength) {
+      const m = v.getUint16(o);
+      if ((m & 0xFF00) !== 0xFF00) break;
+      const len = v.getUint16(o + 2);
+      if (m === 0xFFE1 && v.getUint32(o + 4) === 0x45786966) {
+        const t = o + 10, le = v.getUint16(t) === 0x4949;
+        const g16 = x => v.getUint16(x, le), g32 = x => v.getUint32(x, le);
+        const ifd = t + g32(t + 4), n = g16(ifd);
+        for (let i = 0; i < n; i++) { const e = ifd + 2 + i * 12; if (g16(e) === 0x0112) return g16(e + 8); }
+        return 1;
+      }
+      if (m === 0xFFDA) break;
+      o += 2 + len;
+    }
+    return 1;
+  } catch (e) { return 0; }
+}
+const QUALITY = {
+  orig: { l: 'Origineel', max: 8000, q: 0.95, d: 'Foto’s gaan op volle resolutie in de PDF. Rechtopstaande JPEG’s worden niet opnieuw gecomprimeerd. Grootste bestand.' },
+  high: { l: 'Hoog', max: 3200, q: 0.92, d: 'Maximaal 3200 pixels, 92% JPEG. Scherp genoeg om af te drukken, kleiner bestand.' },
+  compact: { l: 'Compact', max: 2000, q: 0.85, d: 'Maximaal 2000 pixels, 85% JPEG. Handig om te mailen.' }
+};
+// the image that goes into the PDF, at the chosen quality
+async function pdfImage(p, aspect) {
+  const Q = QUALITY[DOC.quality] || QUALITY.orig;
+  if (DOC.quality === 'orig' && !aspect && !p.rot && p.isJpeg && p.orient === 1) return new Uint8Array(await p.file.arrayBuffer());
+  const img = await loadImg(p.src, 60000);
+  let w = img.naturalWidth, h = img.naturalHeight;
+  const r = ((p.rot % 360) + 360) % 360, swap = r === 90 || r === 270;
+  // rotate first on a full-size canvas
+  const c = document.createElement('canvas');
+  const s0 = Math.min(1, Q.max / Math.max(w, h));
+  const dw = Math.round(w * s0), dh = Math.round(h * s0);
+  c.width = swap ? dh : dw; c.height = swap ? dw : dh;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  g.imageSmoothingQuality = 'high';
+  g.translate(c.width / 2, c.height / 2); g.rotate(r * Math.PI / 180); g.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  let out = c;
+  if (aspect) {
+    const a = c.width / c.height;
+    let sw = c.width, sh = c.height, sx = 0, sy = 0;
+    if (a > aspect) { sw = c.height * aspect; sx = (c.width - sw) / 2; } else { sh = c.width / aspect; sy = (c.height - sh) / 2; }
+    out = document.createElement('canvas'); out.width = Math.round(sw); out.height = Math.round(sh);
+    out.getContext('2d').drawImage(c, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  }
+  const blob = await new Promise(res => out.toBlob(res, 'image/jpeg', Q.q));
+  return new Uint8Array(await blob.arrayBuffer());
 }
 function cropData(p, aspect) {
   const c = p.canvas, a = c.width / c.height;
@@ -1440,8 +1501,8 @@ async function buildPdf(pages, title) {
       else if (it.t === 'text') { if (!it.empty) pdfText(doc, it); }
       else if (it.t === 'photo') {
         await tick();
-        const data = it.crop ? cropData(it.p, it.w / it.h) : it.p.data;
-        doc.addImage(data, 'JPEG', it.x, it.y, it.w, it.h, 'p' + it.p.id + (it.crop ? 'c' + Math.round(it.w / it.h * 100) : ''), 'FAST');
+        const data = await pdfImage(it.p, it.crop ? it.w / it.h : null);
+        doc.addImage(data, 'JPEG', it.x, it.y, it.w, it.h, 'p' + it.p.id + (it.crop ? 'c' + Math.round(it.w / it.h * 100) : ''), 'NONE');
       }
       else if (it.t === 'cap') {
         const t = it.p.caption.replace(/\s+/g, ' ').trim();
@@ -1520,18 +1581,17 @@ function openReset() {
 function closeReset() { $('resetPop').hidden = true; $('resetBtn').setAttribute('aria-expanded', 'false'); }
 function resetAll() {
   closeReset();
-  try { ['a4fotoblad.doc', 'a4fotoblad.settings', 'a4fotoblad.title'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  try { ['a4fotoblad.doc', 'a4fotoblad.doc2', 'a4fotoblad.settings', 'a4fotoblad.title'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
   Object.keys(DOC).forEach(k => delete DOC[k]);
   Object.assign(DOC, JSON.parse(JSON.stringify(DOC_DEFAULTS)));
   S.parts.forEach(p => (p.photos || []).forEach(ph => { try { URL.revokeObjectURL(ph.src); } catch (e) {} }));
   S.parts = []; S.undo = null; S.selPhoto = null; S.tab = 'blad';
   PAGE_EL.forEach(w => w.remove()); PAGE_EL.clear(); FLD.clear();
-  S.mode = 'cover';
-  const c = newCover(); S.parts.push(c); S.sel = c.id;
+  S.mode = 'photos'; S.sel = null; S.nav = false; S.insp = false;
   S.rev = 0; S.savedRev = 0;
   updateEmpty(); render(); renderInspector(); renderNav();
   $('viewer').scrollTop = 0;
-  toast('Alles gewist. Je begint met een leeg voorblad.');
+  toast('Alles gewist. Sleep je foto’s erin om opnieuw te beginnen.');
 }
 $('resetBtn').addEventListener('click', () => { if ($('resetPop').hidden) openReset(); else closeReset(); });
 $('resetCancel').addEventListener('click', closeReset);
@@ -1644,8 +1704,8 @@ $('modeSeg').addEventListener('click', e => { const b = e.target.closest('button
 function updateEmpty() {
   const cover = S.mode === 'cover';
   $('emptyArt').hidden = !cover;
-  $('emptyH').textContent = cover ? 'Maak een voorblad' : 'Zet je foto’s op een A4';
-  $('emptyP').textContent = cover ? 'Kies een Savills-stijl, typ het label en de titel, bijvoorbeeld Appendix I · Land registry, en bewaar elk voorblad als eigen PDF.' : 'Kies 2, 6 of 10 foto’s. Ze komen vanzelf netjes op een staand A4 met ruimte voor een bijschrift. Bewaar alles als één PDF.';
+  $('emptyH').textContent = cover ? 'Maak een voorblad' : 'Sleep je foto’s hierheen';
+  $('emptyP').textContent = cover ? 'Kies een Savills-stijl, typ het label en de titel, bijvoorbeeld Appendix I · Land registry, en bewaar elk voorblad als eigen PDF.' : 'Sleep je foto’s hierheen of kies ze. Ze komen vanzelf netjes op een staand A4. Typ bovenin een bestandsnaam en klik op Bewaar PDF.';
   $('emptyGo').textContent = cover ? 'Nieuw voorblad' : 'Kies foto’s…';
   document.querySelector('.empty .keys').hidden = cover;
 }
@@ -1653,7 +1713,7 @@ $('navBtn').addEventListener('click', () => { S.nav = !S.nav; if (innerWidth <= 
 $('inspBtn').addEventListener('click', () => { S.insp = !S.insp; if (innerWidth <= 900 && S.insp) S.nav = false; updateChrome(); });
 $('scrim').addEventListener('click', () => { S.nav = false; S.insp = false; updateChrome(); });
 let lastNarrow = innerWidth <= 900;
-addEventListener('resize', () => { const n = innerWidth <= 900; if (n !== lastNarrow) { lastNarrow = n; S.nav = S.insp = !n; updateChrome(); } });
+addEventListener('resize', () => { const n = innerWidth <= 900; if (n !== lastNarrow) { lastNarrow = n; if (n) { S.nav = S.insp = false; } updateChrome(); } });
 
 let dragDepth = 0;
 const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
@@ -1698,7 +1758,6 @@ function emptyArt() {
   S.uid = uid0;
   $('emptyArt').replaceChildren(...demo.map((c, i) => { const pg = el('div', 'page'); drawPage(pg, coverItems(c, roman(i + 1)), false); return pg; }));
 }
-const first = newCover(); S.parts.push(first); S.sel = first.id;
 updateEmpty();
 fontsReady.then(() => { emptyArt(); render(); renderInspector(); });
 emptyArt(); render(); renderInspector();
