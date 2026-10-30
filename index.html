@@ -1,4 +1,4 @@
-<title>A4 Fotoblad</title>
+<title>Appendix Tool</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: navigator links, crème werktafel met staande A4's in het midden, opmaakpaneel rechts (Savills-kleuren, Apple-indeling) */
@@ -59,7 +59,7 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
   border-bottom:1px solid var(--sep);position:relative;z-index:30}
 .tb-left,.tb-right,.tb-center{display:flex;align-items:center;gap:6px;min-width:0}
 .tb-right{justify-content:flex-end}
-.brand{width:22px;height:22px;flex:none;border-radius:3px;overflow:hidden;margin:0 2px 0 4px}
+.brand{display:none}
 .brand svg{display:block;width:100%;height:100%}
 .title{min-width:0;margin-left:2px;line-height:1.2}
 .title-main{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1582,7 +1582,7 @@ async function buildPdf(pages, title) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   for (const [k, fam, w] of FACES) { doc.addFileToVFS(k + '.ttf', FONTS[k]); doc.addFont(k + '.ttf', fam, 'w' + w); }
-  doc.setProperties({ title: title || 'Fotoblad', creator: 'A4 Fotoblad' });
+  doc.setProperties({ title: title || 'Fotoblad', creator: 'Appendix Tool' });
   let first = true, n = 0;
   const total = pages.filter(p => p.exportable).length;
   for (const pg of pages) {
@@ -1850,7 +1850,22 @@ addEventListener('keydown', e => {
 });
 
 /* ---------- start ---------- */
-$('brand').innerHTML = LOGO_SVG;
+// app icon: a document with a folded corner and a photo inside
+const APP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<path d="M14 4h26l14 14v38a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z" fill="#FFFFFF" stroke="#25273A" stroke-width="3" stroke-linejoin="round"/>
+<path d="M40 4v10a4 4 0 0 0 4 4h10" fill="#FFDF00" stroke="#25273A" stroke-width="3" stroke-linejoin="round"/>
+<rect x="17" y="27" width="30" height="24" rx="2.5" fill="#25273A"/>
+<circle cx="39" cy="34" r="3.6" fill="#FFDF00"/>
+<path d="M17 47l9-10 7 7 4-4 10 9v0a2.5 2.5 0 0 1-2.5 2.5h-25A2.5 2.5 0 0 1 17 48.5z" fill="#FFFFFF" opacity=".92"/>
+</svg>`;
+$('brand').innerHTML = APP_ICON;
+$('brand').title = 'Appendix Tool';
+try {
+  let fav = document.querySelector('link[rel="icon"]');
+  if (!fav) { fav = document.createElement('link'); fav.rel = 'icon'; document.head.appendChild(fav); }
+  fav.type = 'image/svg+xml';
+  fav.href = 'data:image/svg+xml,' + encodeURIComponent(APP_ICON);
+} catch (e) {}
 function emptyArt() {
   const uid0 = S.uid;
   const demo = [
